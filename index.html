@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Ambient 24/7 Clock</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <style>
     :root {
       --bg-h1: 30;
@@ -20,9 +21,11 @@
       --bg-angle: 160deg;
       --anim-amount: 0.5;
       --parallax-opacity: 0.2;
+      --panel-max-height: 360px;
     }
 
     html, body { height:100%; margin:0; }
+
     body {
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
       color: hsl(var(--text));
@@ -33,7 +36,7 @@
       );
       background-attachment: fixed;
       transition: background 1s ease;
-      overflow: hidden;
+      overflow:hidden; /* keep viewport framed; settings panel scrolls internally */
     }
 
     .drift { animation: drift 120s ease-in-out infinite alternate; }
@@ -43,24 +46,29 @@
     }
 
     .wrap {
-      position:absolute;
-      inset:0;
-      display:grid;
-      place-items:center;
-      padding:24px;
+      position:relative;
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      padding:40px 24px 16px;
+      box-sizing:border-box;
+      gap:0;
     }
 
     .clock {
-      position:relative;
       width:min(860px, 92vw);
       border-radius:28px;
       background:rgba(0,0,0,0.22);
       backdrop-filter:blur(12px);
       box-shadow:var(--glass);
-      padding:clamp(20px, 4vw, 36px);
-      display:grid;
-      gap:16px;
+      padding:clamp(20px, 4vw, 26px);
+      display:flex;
+      flex-direction:column;
+      gap:10px;
       z-index:1;
+      margin-top:10px;
+      flex:0 0 auto;
     }
 
     .time {
@@ -72,9 +80,10 @@
 
     .date-row {
       display:flex;
-      gap:12px;
+      gap:10px;
       flex-wrap:wrap;
       align-items:baseline;
+      margin-top:2px;
     }
 
     .date {
@@ -84,79 +93,286 @@
 
     .weather {
       opacity:.8;
-      font-size:clamp(14px, 2.2vw, 18px);
+      font-size:clamp(13px, 2.1vw, 17px);
     }
-
-    .controls {
-      display:grid;
-      gap:10px;
-      grid-template-columns:1fr;
-    }
-
-    .row {
-      display:grid;
-      gap:10px;
-      grid-template-columns:1fr 1fr;
-    }
-    .row > * { min-width:0; }
-
-    label {
-      font-size:14px;
-      color:hsl(var(--dim-text));
-      display:block;
-      margin-bottom:6px;
-    }
-
-    select,
-    input[type="text"],
-    input[type="number"],
-    button {
-      width:100%;
-      padding:10px 12px;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,.15);
-      background:rgba(255,255,255,.06);
-      color:#fff;
-      outline:none;
-      box-sizing:border-box;
-    }
-
-    input[type="range"] { width:100%; }
 
     .chip {
       display:inline-flex;
       align-items:center;
       gap:8px;
-      padding:8px 12px;
+      padding:6px 10px;
       border-radius:999px;
       background:rgba(255,255,255,.06);
       border:1px solid rgba(255,255,255,.12);
-      font-size:13px;
+      font-size:12px;
     }
 
-    .footer {
+    .top-info {
       display:flex;
-      justify-content:space-between;
+      flex-direction:column;
+      gap:6px;
+    }
+
+    .nowplaying-row {
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
       align-items:center;
-      opacity:.8;
+      justify-content:space-between;
+      margin-top:2px;
+    }
+
+    .nowplaying-label {
       font-size:12px;
+      opacity:.82;
+    }
+
+    .nowplaying-label span {
+      font-weight:500;
+    }
+
+    .volume-inline {
+      display:flex;
+      align-items:center;
       gap:8px;
       flex-wrap:wrap;
     }
 
-    .btn { cursor:pointer; }
+    .volume-inline label {
+      font-size:11px;
+      color:hsl(var(--dim-text));
+      margin:0;
+    }
 
-    .reset-btn {
-      width:auto;
-      padding:4px 9px;
-      margin-left:4px;
+    #volume {
+      width:140px;
+      padding:0;
+    }
+
+    #playPause {
+      padding:7px 14px;
       border-radius:999px;
-      font-size:10px;
-      opacity:.85;
+      border:1px solid rgba(255,255,255,.18);
+      background:rgba(255,255,255,.10);
+      font-size:11px;
+      cursor:pointer;
       white-space:nowrap;
     }
 
-    /* Parallax aurora overlay */
+    input[type="range"] {
+      -webkit-appearance:none;
+      appearance:none;
+      height:4px;
+      border-radius:999px;
+      background:rgba(255,255,255,.18);
+      outline:none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance:none;
+      appearance:none;
+      width:12px;
+      height:12px;
+      border-radius:50%;
+      background:#fff;
+      cursor:pointer;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width:12px;
+      height:12px;
+      border-radius:50%;
+      background:#fff;
+      cursor:pointer;
+    }
+
+    .settings-shell {
+      width:min(860px, 92vw);
+      margin-top:18px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      z-index:1;
+      flex:0 0 auto;
+    }
+
+    .settings-nav {
+      display:flex;
+      justify-content:center;
+      flex-wrap:wrap;
+      gap:14px;
+      flex:0 0 auto;
+    }
+
+    .nav-btn {
+      padding:12px 26px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.22);
+      background:rgba(0,0,0,.40);
+      backdrop-filter:blur(16px);
+      color:#fff;
+      font-size:13px;
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      box-shadow:0 10px 30px rgba(0,0,0,0.45);
+      transition:all 0.18s ease;
+    }
+
+    .nav-btn .icon {
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .nav-btn .icon svg {
+      width:18px;
+      height:18px;
+      stroke:#ffffff;
+      stroke-width:1.8;
+      fill:none;
+      display:block;
+    }
+
+    .nav-btn span.label {
+      letter-spacing:0.04em;
+      text-transform:uppercase;
+      font-size:11px;
+      opacity:.94;
+    }
+
+    .nav-btn:hover {
+      background:rgba(255,255,255,.16);
+      box-shadow:0 14px 40px rgba(0,0,0,0.55);
+      transform:translateY(-1px);
+    }
+
+    .nav-btn.active {
+      background:rgba(255,255,255,.22);
+      border-color:rgba(255,255,255,.46);
+      box-shadow:0 16px 44px rgba(0,0,0,0.6);
+      transform:translateY(-1px);
+    }
+
+    .settings-panels {
+      position:relative;
+      width:100%;
+      margin-top:6px;
+      flex:0 0 auto;
+    }
+
+    .settings-panel {
+      margin:0;
+      padding:12px 12px;
+      border-radius:18px;
+      background:rgba(0,0,0,0.30);
+      backdrop-filter:blur(14px);
+      box-shadow:0 8px 30px rgba(0,0,0,0.45);
+      gap:10px;
+      display:none;
+      grid-template-columns:1fr 1fr;
+      font-size:12px;
+      opacity:0;
+      transform:translateY(4px);
+      transition:opacity .18s ease, transform .18s ease;
+      max-height:var(--panel-max-height);
+      overflow-y:auto; /* scrolls inside when tall */
+    }
+
+    .settings-panel.active {
+      display:grid;
+      opacity:1;
+      pointer-events:auto;
+      transform:translateY(0);
+    }
+
+    .settings-panel .full {
+      grid-column:1 / -1;
+    }
+
+    label {
+      font-size:12px;
+      color:hsl(var(--dim-text));
+      display:block;
+      margin-bottom:4px;
+    }
+
+    select,
+    input[type="text"],
+    input[type="number"],
+    button.settings-btn {
+      width:100%;
+      padding:7px 9px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.15);
+      background:rgba(255,255,255,.06);
+      color:#fff;
+      outline:none;
+      box-sizing:border-box;
+      font-size:12px;
+    }
+
+    button.settings-btn.subtle {
+      background:rgba(255,255,255,0.04);
+      font-size:11px;
+      width:auto;
+      white-space:nowrap;
+    }
+
+    .inline-chip {
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      font-size:11px;
+      color:hsl(var(--dim-text));
+    }
+
+    .reset-btn {
+      width:auto;
+      padding:3px 8px;
+      margin-left:4px;
+      border-radius:999px;
+      font-size:9px;
+      opacity:.85;
+      white-space:nowrap;
+      border:1px solid rgba(255,255,255,.18);
+      background:rgba(255,255,255,.04);
+      cursor:pointer;
+    }
+
+    .palette-row {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      margin-bottom:4px;
+    }
+
+    .palette-row select {
+      flex:1;
+    }
+
+    .palette-row button {
+      flex:0 0 190px; /* fixed width so text swap doesn't shift dropdown */
+      text-align:center;
+    }
+
+    .palette-editor {
+      grid-column:1 / -1;
+      display:none;
+      margin-top:2px;
+      gap:6px;
+    }
+
+    .palette-editor.open {
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      column-gap:10px;
+      row-gap:6px;
+    }
+
+    .palette-editor .full {
+      grid-column:1 / -1;
+    }
+
     .parallax {
       position:absolute;
       inset:0;
@@ -178,11 +394,10 @@
       transform:translate3d(var(--px,0px), var(--py,0px), 0) rotate(var(--prot,0deg));
     }
 
-    /* Narrower lat/lon layout */
     .coords-grid {
       display:grid;
-      grid-template-columns:repeat(2, minmax(0, 120px));
-      gap:10px;
+      grid-template-columns:repeat(2, minmax(0, 1fr));
+      gap:8px;
       align-items:flex-end;
       justify-content:flex-start;
     }
@@ -191,130 +406,287 @@
       flex-direction:column;
     }
     .coords-grid .field label {
-      margin-bottom:4px;
-      font-size:12px;
+      margin-bottom:3px;
+      font-size:11px;
     }
     .coords-grid input {
       width:100%;
-      padding:8px 10px;
-      font-size:12px;
+      padding:6px 8px;
+      font-size:11px;
     }
-    .coords-grid .btn {
-      padding:8px 10px;
-      font-size:12px;
+
+    /* Location & units layout tweaks */
+    #locationPanel {
+      grid-template-columns: 2fr 1fr; /* 2/3 for location, 1/3 for temperature */
+      column-gap:18px;
+      align-items:flex-start;
     }
+
+    .loc-group {
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
+
+    .unit-group {
+      align-self:flex-start;
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
+
+    .unit-group .group-title {
+      font-size:12px;
+      color:hsl(var(--dim-text));
+      margin-bottom:0;
+      display:block;
+    }
+
+    .unit-group .field label {
+      margin-bottom:3px;
+      font-size:11px;
+    }
+
+    .temp-unit-select {
+      width:100%;
+      padding-right:18px;
+    }
+
+    .footer {
+      width:min(860px, 92vw);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      opacity:.8;
+      font-size:10px;
+      gap:8px;
+      flex-wrap:wrap;
+      z-index:1;
+      margin-top:auto;
+      flex:0 0 auto;
+    }
+
+    .btn { cursor:pointer; }
   </style>
 </head>
 <body class="drift">
   <div class="wrap">
     <div class="parallax" aria-hidden="true"></div>
 
+    <!-- Main clock box -->
     <div class="clock" role="application" aria-label="Ambient clock">
-      <div class="time" id="time">00:00:00</div>
-      <div class="date-row">
-        <div class="date" id="date">Monday, January 1</div>
-        <div class="chip" id="season">Season: —</div>
-        <div class="weather" id="weather">Weather: (disabled)</div>
+      <div class="top-info">
+        <div class="time" id="time">00:00:00</div>
+        <div class="date-row">
+          <div class="date" id="date">Monday, January 1</div>
+          <div class="chip" id="season">Season: —</div>
+          <div class="weather" id="weather">Weather: (disabled)</div>
+        </div>
+        <div class="nowplaying-row">
+          <div class="nowplaying-label">
+            <span id="nowPlaying">(nothing)</span>
+          </div>
+          <div class="volume-inline">
+            <label for="volume">Volume</label>
+            <input id="volume" type="range" min="0" max="1" step="0.01" value="0.25" data-default="0.25" />
+            <button id="playPause" class="btn">▶︎ Play</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <div class="settings-shell">
+      <div class="settings-nav">
+        <button class="nav-btn" data-target="visualPanel">
+          <span class="icon">
+            <svg viewBox="0 0 24 24">
+              <line x1="5" y1="7" x2="19" y2="7" />
+              <circle cx="9" cy="7" r="2" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+              <circle cx="15" cy="12" r="2" />
+              <line x1="5" y1="17" x2="19" y2="17" />
+              <circle cx="11" cy="17" r="2" />
+            </svg>
+          </span>
+          <span class="label">Visual</span>
+        </button>
+
+        <button class="nav-btn" data-target="playlistPanel">
+          <span class="icon">
+            <svg viewBox="0 0 24 24">
+              <path d="M8 5v11.5a2.5 2.5 0 1 0 1.5 2.3V8.5H17V5H8z" />
+            </svg>
+          </span>
+          <span class="label">Playlist</span>
+        </button>
+
+        <button class="nav-btn" data-target="locationPanel">
+          <span class="icon">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 3a6 6 0 0 0-6 6c0 4 6 12 6 12s6-8 6-12a6 6 0 0 0-6-6z" />
+              <circle cx="12" cy="9" r="2.2" />
+            </svg>
+          </span>
+          <span class="label">Location &amp; Weather</span>
+        </button>
       </div>
 
-      <div class="controls">
-        <!-- Parallax -->
-        <div class="row">
-          <div>
-            <label>Parallax overlay</label>
-            <div class="chip">
-              <input id="parallaxEnable" type="checkbox" checked />
-              <span>Aurora/halo overlay</span>
-            </div>
-          </div>
-          <div>
-            <label for="parallaxAmount">Parallax intensity</label>
-            <div style="display:flex;align-items:center;gap:6px;">
-              <input id="parallaxAmount" type="range" min="0" max="1" step="0.01" value="0.2" data-default="0.2" />
-              <button type="button" class="btn reset-btn" data-target="parallaxAmount">Default</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Gradient animation -->
-        <div class="row">
-          <div>
-            <label>Gradient animation</label>
-            <div class="chip">
-              <input id="animEnable" type="checkbox" checked />
-              <span>Subtle motion</span>
-            </div>
-          </div>
-          <div>
-            <label for="animAmount">Animation amount</label>
-            <div style="display:flex;align-items:center;gap:6px;">
-              <input id="animAmount" type="range" min="0" max="1" step="0.01" value="0.5" data-default="0.5" />
-              <button type="button" class="btn reset-btn" data-target="animAmount">Default</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Palette + brightness -->
-        <div class="row">
-          <div>
+      <div class="settings-panels">
+        <!-- Visual settings -->
+        <div id="visualPanel" class="settings-panel">
+          <div class="full">
             <label for="palette">Monthly palette</label>
-            <select id="palette"></select>
+            <div class="palette-row">
+              <select id="palette"></select>
+              <button
+                type="button"
+                id="togglePaletteEditor"
+                class="settings-btn subtle">
+                Edit this month's palette
+              </button>
+            </div>
+            <div class="inline-chip">
+              Choose which month's palette is active, and optionally customize it.
+            </div>
           </div>
+
+          <!-- Palette editor (toggled) -->
+          <div id="paletteEditor" class="palette-editor">
+            <div class="full">
+              <div class="inline-chip">
+                Customize & rename only the selected month. Saved locally in this browser.
+              </div>
+            </div>
+
+            <div>
+              <label for="paletteName">Name</label>
+              <input id="paletteName" type="text" placeholder="Name for this month" />
+            </div>
+
+            <div>
+              <label for="peH1">Hue A</label>
+              <input id="peH1" type="range" min="0" max="360" />
+            </div>
+
+            <div>
+              <label for="peH2">Hue B</label>
+              <input id="peH2" type="range" min="0" max="360" />
+            </div>
+
+            <div>
+              <label for="peS1">Saturation A</label>
+              <input id="peS1" type="range" min="0" max="60" />
+            </div>
+
+            <div>
+              <label for="peS2">Saturation B</label>
+              <input id="peS2" type="range" min="0" max="60" />
+            </div>
+
+            <div>
+              <label for="peAccHue">Accent hue</label>
+              <input id="peAccHue" type="range" min="0" max="360" />
+            </div>
+
+            <div>
+              <label for="peAccSat">Accent saturation</label>
+              <input id="peAccSat" type="range" min="0" max="80" />
+            </div>
+
+            <div>
+              <label for="peAccLight">Accent lightness</label>
+              <input id="peAccLight" type="range" min="0" max="80" />
+            </div>
+
+            <div class="full">
+              <button type="button" class="reset-btn" id="resetPalette">
+                Reset this month's palette to default
+              </button>
+            </div>
+          </div>
+
           <div>
             <label for="brightnessBias">Brightness bias (night→day)</label>
-            <div style="display:flex;align-items:center;gap:6px;">
+            <div style="display:flex;align-items:center;gap:4px;">
               <input id="brightnessBias" type="range" min="-0.3" max="0.3" step="0.01" value="0" data-default="0" />
-              <button type="button" class="btn reset-btn" data-target="brightnessBias">Default</button>
+              <button type="button" class="reset-btn" data-target="brightnessBias">Default</button>
+            </div>
+          </div>
+
+          <div>
+            <label>Weather sync (visual)</label>
+            <div class="inline-chip">
+              <input id="wxEnable" type="checkbox" />
+              <span>Use live weather to desaturate colors</span>
+            </div>
+          </div>
+
+          <div>
+            <label for="weatherDesatStrength">Weather desaturation strength</label>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <input id="weatherDesatStrength" type="range" min="0" max="1" step="0.05" value="0.6" data-default="0.6" />
+              <button type="button" class="reset-btn" data-target="weatherDesatStrength">Default</button>
+            </div>
+            <div style="font-size:10px; opacity:.65;">
+              0 = no effect, 1 = very washed out when overcast.
+            </div>
+          </div>
+
+          <div>
+            <label>Gradient animation</label>
+            <div class="inline-chip">
+              <input id="animEnable" type="checkbox" checked />
+              <span>Subtle background motion</span>
+            </div>
+          </div>
+
+          <div>
+            <label for="animAmount">Animation amount</label>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <input id="animAmount" type="range" min="0" max="1" step="0.01" value="0.5" data-default="0.5" />
+              <button type="button" class="reset-btn" data-target="animAmount">Default</button>
+            </div>
+          </div>
+
+          <div>
+            <label>Parallax overlay</label>
+            <div class="inline-chip">
+              <input id="parallaxEnable" type="checkbox" checked />
+              <span>Aurora / halo overlay</span>
+            </div>
+          </div>
+
+          <div>
+            <label for="parallaxAmount">Parallax intensity</label>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <input id="parallaxAmount" type="range" min="0" max="1" step="0.01" value="0.2" data-default="0.2" />
+              <button type="button" class="reset-btn" data-target="parallaxAmount">Default</button>
             </div>
           </div>
         </div>
 
-        <!-- Playlists + volume -->
-        <div class="row">
-          <div>
+        <!-- Playlist settings -->
+        <div id="playlistPanel" class="settings-panel">
+          <div class="full">
             <label for="playlist">Playlist</label>
             <select id="playlist"></select>
+            <div class="inline-chip">Playlists are in code for now; future UI can plug in.</div>
           </div>
-          <div>
-            <label for="volume">Volume</label>
-            <div style="display:flex;align-items:center;gap:6px;">
-              <input id="volume" type="range" min="0" max="1" step="0.01" value="0.25" data-default="0.25" />
-              <button type="button" class="btn reset-btn" data-target="volume">Default</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Audio controls -->
-        <div class="row">
-          <div>
-            <label>Audio</label>
-            <div style="display:flex; gap:8px; align-items:center;">
-              <button id="playPause" class="btn">▶︎ Play</button>
-              <span id="nowPlaying" style="opacity:.8; font-size:13px;">(nothing)</span>
-            </div>
-            <div style="margin-top:6px; font-size:12px; opacity:.7;">
-              Note: browsers require a click before audio can play automatically.
-            </div>
-          </div>
-          <div>
-            <label>Hour-on-the-hour switching</label>
-            <div class="chip">
+          <div class="full">
+            <label>Track behavior</label>
+            <div class="inline-chip">
               <input id="switchHourly" type="checkbox" checked />
-              <span>Change track at top of hour</span>
+              <span>Change track at the top of each hour</span>
             </div>
           </div>
         </div>
 
-        <!-- Weather -->
-        <div class="row">
-          <div>
-            <label>Weather sync</label>
-            <div class="chip">
-              <input id="wxEnable" type="checkbox" />
-              <span>Use weather to adjust color</span>
-            </div>
-          </div>
-          <div>
+        <!-- Location & Weather settings -->
+        <div id="locationPanel" class="settings-panel">
+          <!-- Left: Location (2/3) -->
+          <div class="loc-group">
+            <label>Location</label>
             <div class="coords-grid">
               <div class="field">
                 <label for="lat">Lat</label>
@@ -324,39 +696,38 @@
                 <label for="lon">Lon</label>
                 <input id="lon" type="text" placeholder="-117.68" />
               </div>
-              <div style="grid-column:1 / -1;">
-                <button id="useLocation" class="btn">📍 Use my current location</button>
-                <div style="font-size:11px; opacity:.7; margin-top:4px;">
-                  Location requires HTTPS or localhost.
-                </div>
+            </div>
+            <div style="margin-top:6px;">
+              <button id="useLocation" class="btn settings-btn">Use my current location</button>
+              <div style="font-size:10px; opacity:.7; margin-top:3px;">
+                Used for weather-based visuals &amp; temperature. Requires HTTPS or localhost.
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- Weather desaturation control -->
-        <div class="row">
-          <div>
-            <label for="weatherDesatStrength">Weather desaturation strength</label>
-            <div style="display:flex;align-items:center;gap:6px;">
-              <input id="weatherDesatStrength" type="range" min="0" max="1" step="0.05" value="0.6" data-default="0.6" />
-              <button type="button" class="btn reset-btn" data-target="weatherDesatStrength">Default</button>
-            </div>
-            <div style="font-size:11px; opacity:.65;">
-              0 = no change, 1 = very washed-out when overcast.
+          <!-- Right: Temperature (1/3) -->
+          <div class="unit-group">
+            <span class="group-title">Temperature</span>
+            <div class="field">
+              <label for="tempUnit">Units</label>
+              <select id="tempUnit" class="temp-unit-select">
+                <option value="C">°C</option>
+                <option value="F">°F</option>
+              </select>
             </div>
           </div>
-          <div></div>
         </div>
-      </div>
 
-      <div class="footer">
-        <div id="hint">Top of hour track switching is <strong>on</strong>.</div>
-        <div>Ambient 24/7 Clock • Single file demo</div>
       </div>
-
-      <audio id="audio" preload="auto"></audio>
     </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div id="hint">Top of hour track switching is <strong>on</strong>.</div>
+      <div>Ambient 24/7 Clock • v0.1</div>
+    </div>
+
+    <audio id="audio" preload="auto"></audio>
   </div>
 
   <script>
@@ -381,25 +752,64 @@
     const elParallaxAmount = $("parallaxAmount");
     const elGeoBtn = $("useLocation");
     const elWeatherDesatStrength = $("weatherDesatStrength");
+    const elTempUnit = $("tempUnit");
     const elHint = $("hint");
+    const elPaletteName = $("paletteName");
+    const elPeH1 = $("peH1");
+    const elPeH2 = $("peH2");
+    const elPeS1 = $("peS1");
+    const elPeS2 = $("peS2");
+    const elPeAccHue = $("peAccHue");
+    const elPeAccSat = $("peAccSat");
+    const elPeAccLight = $("peAccLight");
+    const elResetPalette = $("resetPalette");
+    const elPaletteEditor = $("paletteEditor");
+    const elTogglePaletteEditor = $("togglePaletteEditor");
     const audio = $("audio");
     const parallaxEl = document.querySelector(".parallax");
 
-    // Muted monthly palettes with distinct March/May
-    const MONTH_PALETTES = {
-      0:  { name: "January — Frost & Pine",    h1:210, h2:170, s1:26, s2:20, accent:[160,40,52] },
-      1:  { name: "February — Plum & Rose",    h1:320, h2:280, s1:30, s2:22, accent:[330,40,52] },
-      2:  { name: "March — Fresh Moss",        h1:135, h2:210, s1:30, s2:24, accent:[135,36,50] }, // teal/green → cool blue
-      3:  { name: "April — Rainy Azure",       h1:205, h2:220, s1:30, s2:26, accent:[210,40,52] },
-      4:  { name: "May — Soft Meadow",         h1:95,  h2:15,  s1:28, s2:24, accent:[12,34,55] },  // warm green → peach
-      5:  { name: "June — Coastal Sunrise",    h1:26,  h2:195, s1:32, s2:26, accent:[28,40,52] },
-      6:  { name: "July — Berry & Midnight",   h1:345, h2:215, s1:30, s2:26, accent:[350,42,52] },
-      7:  { name: "August — Golden Dusk",      h1:32,  h2:20,  s1:32, s2:26, accent:[32,40,52] },
-      8:  { name: "September — Harvest Sky",   h1:26,  h2:210, s1:30, s2:26, accent:[28,40,52] },
-      9:  { name: "October — Spiced Night",    h1:24,  h2:280, s1:32, s2:24, accent:[24,42,52] },
-      10: { name: "November — Ember & Frost",  h1:22,  h2:200, s1:30, s2:24, accent:[200,34,52] },
-      11: { name: "December — Evergreen Glow", h1:150, h2:210, s1:26, s2:30, accent:[150,38,52] },
-    };
+    const navButtons = document.querySelectorAll(".nav-btn");
+    const panels = document.querySelectorAll(".settings-panel");
+
+    function setActivePanel(targetId) {
+      const activeBtn = document.querySelector(".nav-btn.active");
+      const activePanel = document.querySelector(".settings-panel.active");
+
+      if (activeBtn && activeBtn.dataset.target === targetId) {
+        activeBtn.classList.remove("active");
+        if (activePanel) activePanel.classList.remove("active");
+        return;
+      }
+
+      navButtons.forEach(b => b.classList.remove("active"));
+      panels.forEach(p => p.classList.remove("active"));
+
+      const btn = [...navButtons].find(b => b.dataset.target === targetId);
+      const panel = document.getElementById(targetId);
+      if (btn && panel) {
+        btn.classList.add("active");
+        panel.classList.add("active");
+      }
+    }
+
+    navButtons.forEach((btn) => {
+      btn.addEventListener("click", () => setActivePanel(btn.dataset.target));
+    });
+
+    const DEFAULT_PALETTES = [
+      {name:"January — Frost & Pine",      h1:210,h2:170,s1:26,s2:20,accent:[160,40,52]},
+      {name:"February — Plum & Rose",      h1:320,h2:280,s1:30,s2:22,accent:[330,40,52]},
+      {name:"March — Fresh Moss",          h1:135,h2:210,s1:30,s2:24,accent:[135,36,50]},
+      {name:"April — Rainy Azure",         h1:205,h2:220,s1:30,s2:26,accent:[210,40,52]},
+      {name:"May — Soft Meadow",           h1:95, h2:15, s1:28,s2:24,accent:[12,34,55]},
+      {name:"June — Coastal Sunrise",      h1:26, h2:195,s1:32,s2:26,accent:[28,40,52]},
+      {name:"July — Berry & Midnight",     h1:345,h2:215,s1:30,s2:26,accent:[350,42,52]},
+      {name:"August — Golden Dusk",        h1:32, h2:20, s1:32,s2:26,accent:[32,40,52]},
+      {name:"September — Harvest Sky",     h1:26, h2:210,s1:30,s2:26,accent:[28,40,52]},
+      {name:"October — Spiced Night",      h1:24, h2:280,s1:32,s2:24,accent:[24,42,52]},
+      {name:"November — Ember & Frost",    h1:22, h2:200,s1:30,s2:24,accent:[200,34,52]},
+      {name:"December — Evergreen Glow",   h1:150,h2:210,s1:26,s2:30,accent:[150,38,52]},
+    ];
 
     const store = {
       get k() {
@@ -407,14 +817,20 @@
         catch { return {}; }
       },
       set k(v) { localStorage.setItem("ambientClock", JSON.stringify(v)); },
-      patch(p) { this.k = { ...this.k, ...p }; },
+      patch(p) {
+        const cur = this.k;
+        this.k = { ...cur, ...p };
+      },
     };
 
     const now = new Date();
-    const saved = store.k;
+    const saved = store.k || {};
 
     const state = {
-      monthIndex:           saved.monthIndex           ?? now.getMonth(),
+      monthIndex:
+        (typeof saved.monthIndex === "number" && saved.monthIndex >= 0 && saved.monthIndex < 12)
+          ? saved.monthIndex
+          : now.getMonth(),
       brightnessBias:       saved.brightnessBias       ?? 0,
       switchHourly:         saved.switchHourly         ?? true,
       wxEnable:             saved.wxEnable             ?? false,
@@ -430,6 +846,8 @@
       weatherDesat:         saved.weatherDesat         ?? 0,
       lastCloudFrac:        saved.lastCloudFrac        ?? 0,
       timezone:             saved.timezone             ?? null,
+      tempUnit:             saved.tempUnit             ?? "C",
+      paletteEditorOpen:    saved.paletteEditorOpen    ?? false,
     };
 
     const PLAYLISTS = {
@@ -445,44 +863,63 @@
       ],
     };
 
-    // Build selects
-    for (let i = 0; i < 12; i++) {
-      const opt = document.createElement("option");
-      opt.value = String(i);
-      opt.textContent = MONTH_PALETTES[i].name;
-      if (i === state.monthIndex) opt.selected = true;
-      elPalette.appendChild(opt);
-    }
-    for (const name of Object.keys(PLAYLISTS)) {
-      const opt = document.createElement("option");
-      opt.value = name;
-      opt.textContent = name;
-      if (name === state.playlistName) opt.selected = true;
-      elPlaylist.appendChild(opt);
+    function loadPalettes() {
+      const base = DEFAULT_PALETTES.map(p => ({ ...p }));
+      const k = store.k || {};
+      if (Array.isArray(k.palettes) && k.palettes.length === base.length) {
+        for (let i = 0; i < base.length; i++) {
+          base[i] = { ...base[i], ...k.palettes[i] };
+        }
+      }
+      return base;
     }
 
-    // Apply saved UI
-    elBrightnessBias.value = state.brightnessBias;
-    elSwitchHourly.checked = state.switchHourly;
-    elWxEnable.checked = state.wxEnable;
-    elLat.value = state.lat;
-    elLon.value = state.lon;
-    elVolume.value = state.volume;
+    let palettes = loadPalettes();
+
+    function savePalettes() {
+      store.patch({ palettes });
+    }
+
+    // Build palette select
+    if (elPalette) {
+      elPalette.innerHTML = "";
+      for (let i = 0; i < palettes.length; i++) {
+        const opt = document.createElement("option");
+        opt.value = String(i);
+        opt.textContent = palettes[i].name || DEFAULT_PALETTES[i].name || `Palette ${i+1}`;
+        if (i === state.monthIndex) opt.selected = true;
+        elPalette.appendChild(opt);
+      }
+    }
+
+    // Build playlists
+    if (elPlaylist) {
+      for (const name of Object.keys(PLAYLISTS)) {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        if (name === state.playlistName) opt.selected = true;
+        elPlaylist.appendChild(opt);
+      }
+    }
+
+    // Apply saved UI bits
+    if (elBrightnessBias) elBrightnessBias.value = state.brightnessBias;
+    if (elSwitchHourly) elSwitchHourly.checked = state.switchHourly;
+    if (elWxEnable) elWxEnable.checked = state.wxEnable;
+    if (elLat) elLat.value = state.lat;
+    if (elLon) elLon.value = state.lon;
+    if (elVolume) elVolume.value = state.volume;
     audio.volume = state.volume;
     if (elAnimEnable) elAnimEnable.checked = state.animEnable;
     if (elAnimAmount) elAnimAmount.value = state.animAmount;
     if (elParallaxEnable) elParallaxEnable.checked = state.parallaxEnable;
     if (elParallaxAmount) elParallaxAmount.value = state.parallaxAmount;
-    elWeatherDesatStrength.value = state.weatherDesatStrength;
+    if (elWeatherDesatStrength) elWeatherDesatStrength.value = state.weatherDesatStrength;
+    if (elTempUnit) elTempUnit.value = state.tempUnit;
 
-    document.documentElement.style.setProperty(
-      "--anim-amount",
-      state.animEnable ? state.animAmount : 0
-    );
-    document.documentElement.style.setProperty(
-      "--parallax-opacity",
-      state.parallaxEnable ? state.parallaxAmount : 0
-    );
+    document.documentElement.style.setProperty("--anim-amount", state.animEnable ? state.animAmount : 0);
+    document.documentElement.style.setProperty("--parallax-opacity", state.parallaxEnable ? state.parallaxAmount : 0);
 
     const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
     const lerp  = (a, b, t) => a + (b - a) * t;
@@ -525,12 +962,8 @@
         const parts = fmt.formatToParts(new Date());
         const m = {};
         for (const p of parts) m[p.type] = p.value;
-        const year = parseInt(m.year,10);
-        const month = parseInt(m.month,10);
-        const day = parseInt(m.day,10);
-        const hours = parseInt(m.hour,10);
-        const minutes = parseInt(m.minute,10);
-        const seconds = parseInt(m.second,10);
+        const year = +m.year, month = +m.month, day = +m.day;
+        const hours = +m.hour, minutes = +m.minute, seconds = +m.second;
         const seasonDate = new Date(year, month - 1, day);
         return { year, month, day, hours, minutes, seconds, seasonDate };
       } catch {
@@ -555,46 +988,52 @@
       else if (h < 17) B = 0.95;
       else if (h < 22) B = lerp(0.95, 0.32, (h - 17) / 5);
       else             B = lerp(0.32, 0.08, (h - 22) / 2);
-
-      const bias = parseFloat(elBrightnessBias.value || 0);
+      const bias = parseFloat(elBrightnessBias?.value || 0);
       return clamp(B + bias, 0.02, 1.0);
     }
 
     function applyPalette(monthIndex, brightness, seasonDate, desatOverride) {
-      const p = MONTH_PALETTES[monthIndex];
+      const base = DEFAULT_PALETTES[monthIndex];
+      const p = palettes[monthIndex] || base;
+      if (!p) return;
+
       const day = seasonDate.getDate();
       const drift = (day - 15) / 80;
-
-      const baseH1 = p.h1 + drift * 4;
-      const baseH2 = p.h2 - drift * 4;
-
-      const desat = typeof desatOverride === "number"
+      const desat = (typeof desatOverride === "number")
         ? desatOverride
         : (state.weatherDesat || 0);
 
-      const s1 = p.s1 * (1 - desat);
-      const s2 = p.s2 * (1 - desat);
+      const h1 = (p.h1 ?? base.h1) + drift * 4;
+      const h2 = (p.h2 ?? base.h2) - drift * 4;
+      const s1 = (p.s1 ?? base.s1) * (1 - desat);
+      const s2 = (p.s2 ?? base.s2) * (1 - desat);
 
-      document.documentElement.style.setProperty("--bg-h1", baseH1);
-      document.documentElement.style.setProperty("--bg-h2", baseH2);
+      document.documentElement.style.setProperty("--bg-h1", h1);
+      document.documentElement.style.setProperty("--bg-h2", h2);
       document.documentElement.style.setProperty("--bg-s1", s1 + "%");
       document.documentElement.style.setProperty("--bg-s2", s2 + "%");
       document.documentElement.style.setProperty("--bg-l1", "6%");
       document.documentElement.style.setProperty("--bg-l2", "10%");
       document.documentElement.style.setProperty("--brightness", brightness);
 
-      const acc = p.accent;
+      const acc = p.accent || base.accent || [40,55,52];
       const accSat = acc[1] * (1 - desat * 0.5);
-      document.documentElement.style.setProperty(
-        "--accent",
-        `${acc[0]}, ${accSat}%, ${acc[2]}%`
-      );
+      document.documentElement.style.setProperty("--accent", `${acc[0]}, ${accSat}%, ${acc[2]}%`);
 
       elSeason.textContent = `Season: ${seasonNameForDate(seasonDate)}`;
     }
 
+    function formatTemp(tempC) {
+      if (tempC == null || isNaN(tempC)) return `—°${state.tempUnit}`;
+      if (state.tempUnit === "F") {
+        const f = (tempC * 9/5) + 32;
+        return `${f.toFixed(1)}°F`;
+      }
+      return `${tempC.toFixed(1)}°C`;
+    }
+
     async function refreshWeather() {
-      if (!elWxEnable.checked) {
+      if (!elWxEnable || !elWxEnable.checked) {
         state.weatherDesat = 0;
         store.patch({ weatherDesat: 0 });
         elWeather.textContent = "Weather: (disabled)";
@@ -619,10 +1058,11 @@
         const j = await r.json();
 
         const cw = j.current_weather || {};
+        const tempC = typeof cw.temperature === "number" ? cw.temperature : null;
         const clouds = (j.hourly?.cloudcover?.[0]) ?? 0;
         const precip = (j.hourly?.precipitation_probability?.[0]) ?? 0;
 
-        let desc = `T ${cw.temperature ?? "—"}°C, clouds ${clouds}%`;
+        let desc = `${formatTemp(tempC)}, clouds ${clouds}%`;
         if (precip) desc += `, precip ${precip}%`;
         elWeather.textContent = `Weather: ${desc}`;
 
@@ -634,9 +1074,7 @@
         const cloudFrac = clamp(clouds / 100, 0, 1);
         state.lastCloudFrac = cloudFrac;
 
-        const strength = parseFloat(elWeatherDesatStrength.value || state.weatherDesatStrength || 0.6);
-        state.weatherDesatStrength = strength;
-
+        const strength = state.weatherDesatStrength;
         const desat = clamp(cloudFrac * strength, 0, 1);
         state.weatherDesat = desat;
 
@@ -675,7 +1113,7 @@
           state.lat = elLat.value;
           state.lon = elLon.value;
           store.patch({ lat: state.lat, lon: state.lon });
-          if (!elWxEnable.checked) {
+          if (elWxEnable && !elWxEnable.checked) {
             elWxEnable.checked = true;
             state.wxEnable = true;
             store.patch({ wxEnable: true });
@@ -690,7 +1128,6 @@
       );
     }
 
-    // Audio
     let currentPlaylist = PLAYLISTS[state.playlistName] || [];
 
     function setPlaylist(name) {
@@ -713,78 +1150,124 @@
       audio.src = src;
       audio.loop = true;
       const name = src.split("/").pop() || "track";
-      $("nowPlaying").textContent = `Now playing: ${name}`;
+      $("nowPlaying").textContent = `Now playing: ${state.playlistName} • ${name}`;
       audio.play().catch(() => {});
     }
 
-    // Tick + animations
-    let lastMinute = -1;
-    let startTime = performance.now();
-    let targetX = 0, targetY = 0, px = 0, py = 0;
+    function syncPaletteEditor() {
+      if (!elPaletteEditor) return;
+      const idx = state.monthIndex;
+      const base = DEFAULT_PALETTES[idx];
+      const p = palettes[idx] || base;
+      if (!p || !base) return;
 
-    window.addEventListener("mousemove", (e) => {
-      const amt = parseFloat(elParallaxAmount?.value || state.parallaxAmount || 0.2);
-      const rx = (e.clientX / window.innerWidth) - 0.5;
-      const ry = (e.clientY / window.innerHeight) - 0.5;
-      targetX = rx * 60 * amt;
-      targetY = ry * 60 * amt;
-    });
-
-    function tick() {
-      const { hours, minutes, seconds, seasonDate } = getZonedDate();
-
-      elTime.textContent = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
-
-      if (minutes !== lastMinute) {
-        lastMinute = minutes;
-
-        elDate.textContent = seasonDate.toLocaleDateString(undefined, {
-          weekday: "long",
-          month: "long",
-          day: "numeric",
-          timeZone: state.timezone || undefined,
-        });
-
-        const b = brightnessForTime(hours, minutes);
-        applyPalette(state.monthIndex, b, seasonDate);
-
-        if (state.wxEnable && minutes % 10 === 0) {
-          refreshWeather();
-        }
-        if (state.switchHourly && minutes === 0) {
-          pickTrackForHour(hours);
-        }
+      if (elPaletteName) {
+        elPaletteName.value = p.name || base.name || `Palette ${idx+1}`;
       }
+      if (elPeH1) elPeH1.value = p.h1 ?? base.h1;
+      if (elPeH2) elPeH2.value = p.h2 ?? base.h2;
+      if (elPeS1) elPeS1.value = p.s1 ?? base.s1;
+      if (elPeS2) elPeS2.value = p.s2 ?? base.s2;
 
-      if (state.animEnable && state.animAmount > 0) {
-        const t = performance.now() - startTime;
-        const amount = state.animAmount;
-        const offset = Math.sin(t / 8000) * 8 * amount;
-        document.documentElement.style.setProperty(
-          "--bg-angle",
-          `${160 + offset}deg`
-        );
-      }
-
-      if (state.parallaxEnable && state.parallaxAmount > 0 && parallaxEl) {
-        px += (targetX - px) * 0.04;
-        py += (targetY - py) * 0.04;
-        const wobble =
-          Math.sin(performance.now() / 60000) *
-          4 *
-          state.parallaxAmount;
-        parallaxEl.style.setProperty("--px", `${px}px`);
-        parallaxEl.style.setProperty("--py", `${py}px`);
-        parallaxEl.style.setProperty("--prot", `${wobble}deg`);
-      }
-
-      requestAnimationFrame(tick);
+      const acc = p.accent || base.accent || [40,55,52];
+      if (elPeAccHue) elPeAccHue.value = acc[0];
+      if (elPeAccSat) elPeAccSat.value = acc[1];
+      if (elPeAccLight) elPeAccLight.value = acc[2];
     }
 
-    // Reset buttons
+    function setPaletteEditorOpen(open) {
+      if (!elPaletteEditor || !elTogglePaletteEditor) return;
+      if (open) {
+        elPaletteEditor.classList.add("open");
+        elTogglePaletteEditor.textContent = "Hide this month's palette details";
+        syncPaletteEditor();
+      } else {
+        elPaletteEditor.classList.remove("open");
+        elTogglePaletteEditor.textContent = "Edit this month's palette";
+      }
+      state.paletteEditorOpen = open;
+      store.patch({ paletteEditorOpen: open });
+    }
+
+    if (elTogglePaletteEditor) {
+      elTogglePaletteEditor.addEventListener("click", () => {
+        const open = !elPaletteEditor.classList.contains("open");
+        setPaletteEditorOpen(open);
+      });
+    }
+
+    if (elPalette) {
+      elPalette.addEventListener("change", (e) => {
+        const idx = parseInt(e.target.value, 10);
+        state.monthIndex = (isNaN(idx) ? 0 : idx);
+        store.patch({ monthIndex: state.monthIndex });
+        if (state.paletteEditorOpen) syncPaletteEditor();
+        const z = getZonedDate();
+        const b = brightnessForTime(z.hours, z.minutes);
+        applyPalette(state.monthIndex, b, z.seasonDate);
+      });
+    }
+
+    if (elPaletteName) {
+      elPaletteName.addEventListener("input", () => {
+        const idx = state.monthIndex;
+        const base = DEFAULT_PALETTES[idx];
+        const p = palettes[idx] || { ...(base || {}) };
+        p.name = elPaletteName.value.trim() || (base?.name) || `Palette ${idx+1}`;
+        palettes[idx] = p;
+        savePalettes();
+        if (elPalette && elPalette.options[idx]) {
+          elPalette.options[idx].textContent = p.name;
+        }
+      });
+    }
+
+    function updatePaletteFromSliders() {
+      const idx = state.monthIndex;
+      const base = DEFAULT_PALETTES[idx];
+      const p = palettes[idx] || { ...(base || {}) };
+      if (elPeH1) p.h1 = parseFloat(elPeH1.value) || 0;
+      if (elPeH2) p.h2 = parseFloat(elPeH2.value) || 0;
+      if (elPeS1) p.s1 = parseFloat(elPeS1.value) || 0;
+      if (elPeS2) p.s2 = parseFloat(elPeS2.value) || 0;
+      const h = elPeAccHue ? parseFloat(elPeAccHue.value) || 0 : (p.accent?.[0] ?? 40);
+      const s = elPeAccSat ? parseFloat(elPeAccSat.value) || 40 : (p.accent?.[1] ?? 40);
+      const l = elPeAccLight ? parseFloat(elPeAccLight.value) || 52 : (p.accent?.[2] ?? 52);
+      p.accent = [h, s, l];
+      palettes[idx] = p;
+      savePalettes();
+
+      const z = getZonedDate();
+      const b = brightnessForTime(z.hours, z.minutes);
+      applyPalette(idx, b, z.seasonDate);
+    }
+
+    [elPeH1, elPeH2, elPeS1, elPeS2, elPeAccHue, elPeAccSat, elPeAccLight].forEach(input => {
+      if (input) input.addEventListener("input", updatePaletteFromSliders);
+    });
+
+    if (elResetPalette) {
+      elResetPalette.addEventListener("click", () => {
+        const idx = state.monthIndex;
+        const base = DEFAULT_PALETTES[idx];
+        if (!base) return;
+        palettes[idx] = { ...base };
+        savePalettes();
+        syncPaletteEditor();
+        if (elPalette && elPalette.options[idx]) {
+          elPalette.options[idx].textContent = palettes[idx].name;
+        }
+        const z = getZonedDate();
+        const b = brightnessForTime(z.hours, z.minutes);
+        applyPalette(idx, b, z.seasonDate);
+      });
+    }
+
+    // Reset buttons (non-palette)
     document.querySelectorAll(".reset-btn").forEach((btn) => {
+      const id = btn.dataset.target;
+      if (!id) return;
       btn.addEventListener("click", () => {
-        const id = btn.dataset.target;
         const input = document.getElementById(id);
         if (!input) return;
         const defAttr = input.getAttribute("data-default");
@@ -816,9 +1299,13 @@
           store.patch({ volume: def });
         } else if (id === "weatherDesatStrength") {
           state.weatherDesatStrength = def;
-          elWeatherDesatStrength.value = def;
-          const cf = state.lastCloudFrac || 0;
-          state.weatherDesat = clamp(cf * state.weatherDesatStrength, 0, 1);
+          if (elWeatherDesatStrength) elWeatherDesatStrength.value = def;
+          if (state.wxEnable && elWxEnable && elWxEnable.checked) {
+            const cf = clamp(state.lastCloudFrac || 0, 0, 1);
+            state.weatherDesat = clamp(cf * state.weatherDesatStrength, 0, 1);
+          } else {
+            state.weatherDesat = 0;
+          }
           store.patch({
             weatherDesatStrength: state.weatherDesatStrength,
             weatherDesat: state.weatherDesat,
@@ -830,57 +1317,85 @@
       });
     });
 
-    // Event wiring
-    elPalette.addEventListener("change", (e) => {
-      state.monthIndex = parseInt(e.target.value, 10);
-      store.patch({ monthIndex: state.monthIndex });
-      const z = getZonedDate();
-      const b = brightnessForTime(z.hours, z.minutes);
-      applyPalette(state.monthIndex, b, z.seasonDate);
-    });
+    if (elBrightnessBias) {
+      elBrightnessBias.addEventListener("input", () => {
+        state.brightnessBias = parseFloat(elBrightnessBias.value);
+        store.patch({ brightnessBias: state.brightnessBias });
+        const z = getZonedDate();
+        const b = brightnessForTime(z.hours, z.minutes);
+        applyPalette(state.monthIndex, b, z.seasonDate);
+      });
+    }
 
-    elBrightnessBias.addEventListener("input", () => {
-      state.brightnessBias = parseFloat(elBrightnessBias.value);
-      store.patch({ brightnessBias: state.brightnessBias });
-      const z = getZonedDate();
-      const b = brightnessForTime(z.hours, z.minutes);
-      applyPalette(state.monthIndex, b, z.seasonDate);
-    });
+    // LIVE weather desaturation strength slider
+    if (elWeatherDesatStrength) {
+      elWeatherDesatStrength.addEventListener("input", () => {
+        const strength = parseFloat(elWeatherDesatStrength.value) || 0;
+        state.weatherDesatStrength = strength;
+        store.patch({ weatherDesatStrength: strength });
 
-    elPlaylist.addEventListener("change", (e) => setPlaylist(e.target.value));
+        if (state.wxEnable && elWxEnable && elWxEnable.checked) {
+          const cf = clamp(state.lastCloudFrac || 0, 0, 1);
+          state.weatherDesat = clamp(cf * strength, 0, 1);
+        } else {
+          state.weatherDesat = 0;
+        }
+        store.patch({ weatherDesat: state.weatherDesat });
 
-    elVolume.addEventListener("input", () => {
-      state.volume = parseFloat(elVolume.value);
-      audio.volume = state.volume;
-      store.patch({ volume: state.volume });
-    });
+        const z = getZonedDate();
+        const b = brightnessForTime(z.hours, z.minutes);
+        applyPalette(state.monthIndex, b, z.seasonDate);
+      });
+    }
 
-    elPlayPause.addEventListener("click", () => {
-      if (audio.paused) {
-        audio.play().catch(() => {});
-        elPlayPause.textContent = "⏸ Pause";
-      } else {
-        audio.pause();
-        elPlayPause.textContent = "▶︎ Play";
-      }
-    });
+    if (elPlaylist) {
+      elPlaylist.addEventListener("change", (e) => setPlaylist(e.target.value));
+    }
 
-    elSwitchHourly.addEventListener("change", () => {
-      state.switchHourly = elSwitchHourly.checked;
-      store.patch({ switchHourly: state.switchHourly });
-      elHint.innerHTML =
-        `Top of hour track switching is <strong>${state.switchHourly ? "on" : "off"}</strong>.`;
-      if (state.switchHourly) {
-        const { hours } = getZonedDate();
-        pickTrackForHour(hours);
-      }
-    });
+    if (elVolume) {
+      elVolume.addEventListener("input", () => {
+        state.volume = parseFloat(elVolume.value);
+        audio.volume = state.volume;
+        store.patch({ volume: state.volume });
+      });
+    }
 
-    elWxEnable.addEventListener("change", () => {
-      state.wxEnable = elWxEnable.checked;
-      store.patch({ wxEnable: state.wxEnable });
-      refreshWeather();
-    });
+    if (elPlayPause) {
+      elPlayPause.addEventListener("click", () => {
+        if (audio.paused) {
+          audio.play().catch(() => {});
+          elPlayPause.textContent = "⏸ Pause";
+        } else {
+          audio.pause();
+          elPlayPause.textContent = "▶︎ Play";
+        }
+      });
+    }
+
+    if (elSwitchHourly) {
+      elSwitchHourly.addEventListener("change", () => {
+        state.switchHourly = elSwitchHourly.checked;
+        store.patch({ switchHourly: state.switchHourly });
+        elHint.innerHTML =
+          `Top of hour track switching is <strong>${state.switchHourly ? "on" : "off"}</strong>.`;
+        if (state.switchHourly) {
+          const { hours } = getZonedDate();
+          pickTrackForHour(hours);
+        }
+      });
+    }
+
+    if (elWxEnable) {
+      elWxEnable.addEventListener("change", () => {
+        state.wxEnable = elWxEnable.checked;
+        store.patch({ wxEnable: state.wxEnable });
+        if (!state.wxEnable) {
+          state.weatherDesat = 0;
+          store.patch({ weatherDesat: 0 });
+        }
+        refreshWeather();
+      });
+    }
 
     if (elGeoBtn) {
       elGeoBtn.addEventListener("click", useMyLocation);
@@ -902,10 +1417,7 @@
       elAnimAmount.addEventListener("input", () => {
         state.animAmount = parseFloat(elAnimAmount.value);
         if (state.animEnable) {
-          document.documentElement.style.setProperty(
-            "--anim-amount",
-            state.animAmount
-          );
+          document.documentElement.style.setProperty("--anim-amount", state.animAmount);
         }
         store.patch({ animAmount: state.animAmount });
       });
@@ -924,34 +1436,30 @@
       elParallaxAmount.addEventListener("input", () => {
         state.parallaxAmount = parseFloat(elParallaxAmount.value);
         if (state.parallaxEnable) {
-          document.documentElement.style.setProperty(
-            "--parallax-opacity",
-            state.parallaxAmount
-          );
+          document.documentElement.style.setProperty("--parallax-opacity", state.parallaxAmount);
         }
         store.patch({ parallaxAmount: state.parallaxAmount });
       });
     }
 
-    elWeatherDesatStrength.addEventListener("input", () => {
-      state.weatherDesatStrength = parseFloat(elWeatherDesatStrength.value);
-      const cf = state.lastCloudFrac || 0;
-      state.weatherDesat = clamp(cf * state.weatherDesatStrength, 0, 1);
-      store.patch({
-        weatherDesatStrength: state.weatherDesatStrength,
-        weatherDesat: state.weatherDesat,
+    if (elTempUnit) {
+      elTempUnit.addEventListener("change", () => {
+        state.tempUnit = elTempUnit.value === "F" ? "F" : "C";
+        store.patch({ tempUnit: state.tempUnit });
+        if (state.wxEnable && elWxEnable && elWxEnable.checked) {
+          refreshWeather();
+        }
       });
-      const z = getZonedDate();
-      const b = brightnessForTime(z.hours, z.minutes);
-      applyPalette(state.monthIndex, b, z.seasonDate);
-    });
+    }
 
     ["lat","lon"].forEach((id) => {
-      $(id).addEventListener("change", () => {
+      const input = document.getElementById(id);
+      if (!input) return;
+      input.addEventListener("change", () => {
         state.lat = elLat.value;
         state.lon = elLon.value;
         store.patch({ lat: state.lat, lon: state.lon });
-        if (state.wxEnable) refreshWeather();
+        if (state.wxEnable && elWxEnable && elWxEnable.checked) refreshWeather();
       });
     });
 
@@ -964,19 +1472,113 @@
       });
     }
 
+    function updatePanelMaxHeight() {
+      const wrap = document.querySelector(".wrap");
+      const clock = document.querySelector(".clock");
+      const nav = document.querySelector(".settings-nav");
+      const footer = document.querySelector(".footer");
+      if (!wrap || !clock || !nav || !footer) return;
+
+      const cs = getComputedStyle(wrap);
+      const padTop = parseFloat(cs.paddingTop) || 0;
+      const padBottom = parseFloat(cs.paddingBottom) || 0;
+
+      const used =
+        padTop +
+        clock.offsetHeight +
+        18 +
+        nav.offsetHeight +
+        6 +
+        8 +
+        footer.offsetHeight +
+        padBottom +
+        16;
+
+      const available = window.innerHeight - used;
+      const panelMax = Math.max(120, available);
+      document.documentElement.style.setProperty("--panel-max-height", panelMax + "px");
+    }
+
     // Init
+    syncPaletteEditor();
+    setPaletteEditorOpen(state.paletteEditorOpen);
     setPlaylist(state.playlistName);
+
     const z0 = getZonedDate();
     const b0 = brightnessForTime(z0.hours, z0.minutes);
     applyPalette(state.monthIndex, b0, z0.seasonDate, state.weatherDesat);
 
-    if (state.wxEnable) {
+    if (state.wxEnable && elWxEnable && elWxEnable.checked) {
       refreshWeather();
     }
 
     if (location.hostname !== "localhost" && location.protocol !== "http:") {
-      elHint.innerHTML +=
-        " — Tip: serve via <strong>http://localhost</strong> for smoother audio behavior.";
+      elHint.innerHTML += " — Tip: run via localhost or HTTPS.";
+    }
+
+    window.addEventListener("load", updatePanelMaxHeight);
+    window.addEventListener("resize", updatePanelMaxHeight);
+
+    let lastMinute = -1;
+    let startTime = performance.now();
+    let targetX = 0, targetY = 0, px = 0, py = 0;
+
+    window.addEventListener("mousemove", (e) => {
+      const amt = parseFloat(elParallaxAmount?.value || state.parallaxAmount || 0.2);
+      const rx = (e.clientX / window.innerWidth) - 0.5;
+      const ry = (e.clientY / window.innerHeight) - 0.5;
+      targetX = rx * 60 * amt;
+      targetY = ry * 60 * amt;
+    });
+
+    function tick() {
+      const { hours, minutes, seconds, seasonDate } = getZonedDate();
+
+      elTime.textContent = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+
+      if (minutes !== lastMinute) {
+        lastMinute = minutes;
+
+        elDate.textContent = seasonDate.toLocaleDateString(undefined, {
+          weekday: "long",
+          month: "long",
+          day: "numeric",
+          timeZone: state.timezone || undefined,
+        });
+
+        const b = brightnessForTime(hours, minutes);
+        applyPalette(state.monthIndex, b, seasonDate);
+
+        if (state.wxEnable && elWxEnable && elWxEnable.checked && minutes % 10 === 0) {
+          refreshWeather();
+        }
+        if (state.switchHourly && minutes === 0) {
+          pickTrackForHour(hours);
+        }
+
+        updatePanelMaxHeight();
+      }
+
+      if (state.animEnable && state.animAmount > 0) {
+        const t = performance.now() - startTime;
+        const amount = state.animAmount;
+        const offset = Math.sin(t / 8000) * 8 * amount;
+        document.documentElement.style.setProperty("--bg-angle", `${160 + offset}deg`);
+      }
+
+      if (state.parallaxEnable && state.parallaxAmount > 0 && parallaxEl) {
+        px += (targetX - px) * 0.04;
+        py += (targetY - py) * 0.04;
+        const wobble =
+          Math.sin(performance.now() / 60000) *
+          4 *
+          state.parallaxAmount;
+        parallaxEl.style.setProperty("--px", `${px}px`);
+        parallaxEl.style.setProperty("--py", `${py}px`);
+        parallaxEl.style.setProperty("--prot", `${wobble}deg`);
+      }
+
+      requestAnimationFrame(tick);
     }
 
     requestAnimationFrame(tick);
